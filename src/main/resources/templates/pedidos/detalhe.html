@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Pedido</title>
+</head>
+<body>
+
+<!--
+    Detalhe do pedido via API:
+    GET  /api/pedidos/{id}               dados do pedido
+    GET  /api/pedidos/{id}/acoes         o que pode ser feito agora (calculado no servidor)
+    PUT  /api/pedidos/{id}/status?status andamento (GERENTE e ATENDENTE)
+    POST /api/pedidos/{id}/desconto      somente GERENTE
+    POST /api/pedidos/{id}/cancelar      somente GERENTE
+    GET  /api/auditoria?entidade=Pedido  histórico (ADMIN e GERENTE)
+-->
+<div th:fragment="content" id="pedido-app" th:data-id="${pedidoId}">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/pedidos" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+        <h2 class="fw-bold mb-0">Pedido <span class="font-monospace text-muted fs-5" id="codigo"></span></h2>
+        <span class="fs-5" id="status"></span>
+    </div>
+
+    <div id="mensagem"></div>
+
+    <div class="row g-4">
+        <!-- Coluna principal -->
+        <div class="col-lg-8">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body small" id="dados"></div>
+                <table class="table align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-4">Item</th>
+                            <th class="text-center">Qtd.</th>
+                            <th class="text-end">Preço unit.</th>
+                            <th class="text-end pe-4">Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="itens"></tbody>
+                    <tfoot id="totais"></tfoot>
+                </table>
+            </div>
+
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-medium"><i class="bi bi-clock-history me-1"></i>Registro de entrada e saída</div>
+                <ul class="list-group list-group-flush small" id="linhaDoTempo"></ul>
+            </div>
+
+            <div class="card shadow-sm d-none" id="cardHistorico">
+                <div class="card-header fw-medium"><i class="bi bi-journal-text me-1"></i>Auditoria deste pedido</div>
+                <ul class="list-group list-group-flush small" id="historico"></ul>
+            </div>
+        </div>
+
+        <!-- Coluna de ações -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4 d-none" id="cardAndamento">
+                <div class="card-header fw-medium"><i class="bi bi-arrow-right-circle me-1"></i>Andamento</div>
+                <div class="card-body" id="botoesStatus"></div>
+            </div>
+
+            <div class="card shadow-sm mb-4 d-none" id="cardDesconto">
+                <div class="card-header fw-medium"><i class="bi bi-percent me-1"></i>Aplicar desconto</div>
+                <div class="card-body">
+                    <form id="formDesconto">
+                        <div class="input-group mb-2">
+                            <input type="number" id="percentual" class="form-control" min="0.01" step="0.01" required placeholder="Ex: 10">
+                            <span class="input-group-text">%</span>
+                        </div>
+                        <input type="text" id="motivoDesconto" class="form-control mb-2" maxlength="500" placeholder="Motivo (opcional)">
+                        <div class="form-text mb-2" id="limiteDesconto"></div>
+                        <button type="submit" class="btn btn-warning w-100">Aplicar desconto</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card shadow-sm border-danger d-none" id="cardCancelar">
+                <div class="card-header fw-medium text-danger"><i class="bi bi-x-octagon me-1"></i>Cancelar pedido</div>
+                <div class="card-body">
+                    <form id="formCancelar">
+                        <textarea id="justificativa" class="form-control mb-2" rows="3" minlength="10" maxlength="500"
+                                  required placeholder="Justificativa (obrigatória, mín. 10 caracteres)"></textarea>
+                        <button type="submit" class="btn btn-danger w-100">Cancelar pedido</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const id = document.getElementById('pedido-app').dataset.id;
+            const url = '/api/pedidos/' + encodeURIComponent(id);
+            const mensagem = document.getElementById('mensagem');
+            const el = nome => document.getElementById(nome);
+            const operaPedido = temPerfil('GERENTE', 'ATENDENTE');
+            const ehGerente = temPerfil('GERENTE');
+            const veAuditoria = temPerfil('ADMIN', 'GERENTE');
+
+            const aviso = sessionStorage.getItem('aviso');
+            if (aviso) {
+                mostrarMensagem(mensagem, aviso, 'sucesso');
+                sessionStorage.removeItem('aviso');
+            }
+
+            async function carregar() {
+                try {
+                    const [p, acoes] = await Promise.all([api(url), api(url + '/acoes')]);
+                    renderizarPedido(p);
+                    renderizarAcoes(acoes);
+                    if (veAuditoria) {
+                        renderizarHistorico(await api('/api/auditoria?entidade=Pedido&entidadeId=' + encodeURIComponent(id)));
+                    }
+                } catch (e) {
+                    mostrarMensagem(mensagem, e.message, 'erro');
+                }
+            }
+
+            function renderizarPedido(p) {
+                el('codigo').textContent = p.id.slice(-6);
+                el('status').innerHTML = badgeStatus(p.status, p.statusDescricao);
+                el('dados').innerHTML = `
+                    <div class="row">
+                        <div class="col-md-6 mb-2"><span class="text-muted">Cliente:</span> <strong>${escapeHtml(p.clienteNome)}</strong></div>
+                        <div class="col-md-6 mb-2"><span class="text-muted">Atendimento:</span> ${escapeHtml(p.tipoAtendimentoDescricao)}</div>
+                        ${p.observacao ? `<div class="col-12"><span class="text-muted">Observação:</span> ${escapeHtml(p.observacao)}</div>` : ''}
+                    </div>`;
+                el('itens').innerHTML = p.itens.map(i => `
+                    <tr>
+                        <td class="ps-4">${escapeHtml(i.nomeProduto)}</td>
+                        <td class="text-center">${i.quantidade}</td>
+                        <td class="text-end">${moeda(i.precoUnitario)}</td>
+                        <td class="text-end pe-4">${moeda(i.subtotal)}</td>
+                    </tr>`).join('');
+                el('totais').innerHTML = `
+                    <tr><td colspan="3" class="text-end text-muted">Subtotal</td><td class="text-end pe-4">${moeda(p.subtotal)}</td></tr>
+                    ${Number(p.valorDesconto) > 0 ? `<tr><td colspan="3" class="text-end text-muted">Desconto (${Number(p.percentualDesconto).toLocaleString('pt-BR')}%)</td>
+                        <td class="text-end pe-4 text-danger">- ${moeda(p.valorDesconto)}</td></tr>` : ''}
+                    <tr class="fw-bold"><td colspan="3" class="text-end">Total</td><td class="text-end pe-4">${moeda(p.valorTotal)}</td></tr>`;
+
+                const linha = (titulo, quando, quem, extra) =>
+                    `<li class="list-group-item ${extra || ''}"><strong>${titulo}:</strong> ${dataHora(quando)} por ${escapeHtml(quem)}</li>`;
+                el('linhaDoTempo').innerHTML = [
+                    linha('Entrada', p.dataHoraEntrada, p.responsavelEntrada),
+                    p.dataHoraDesconto ? linha('Desconto', p.dataHoraDesconto, p.responsavelDesconto) : '',
+                    p.dataHoraSaida ? linha('Saída', p.dataHoraSaida, p.responsavelSaida)
+                        : '<li class="list-group-item"><strong>Saída:</strong> <span class="text-muted">ainda não saiu</span></li>',
+                    p.dataHoraFinalizacao ? linha('Finalizado', p.dataHoraFinalizacao, p.responsavelFinalizacao) : '',
+                    p.cancelado ? `<li class="list-group-item list-group-item-danger"><strong>Cancelado:</strong>
+                        ${dataHora(p.dataHoraCancelamento)} por ${escapeHtml(p.responsavelCancelamento)}
+                        <div><em>Justificativa:</em> ${escapeHtml(p.justificativaCancelamento)}</div></li>` : ''
+                ].join('');
+            }
+
+            // Os botões seguem o que o servidor diz que é permitido (/acoes) + o perfil do usuário.
+            function renderizarAcoes(acoes) {
+                el('cardAndamento').classList.toggle('d-none', !operaPedido);
+                el('botoesStatus').innerHTML = acoes.proximosStatus.length === 0
+                    ? '<p class="small text-muted mb-0">Nenhuma transição disponível para este pedido.</p>'
+                    : acoes.proximosStatus.map(o => `
+                        <button type="button" class="btn btn-outline-primary w-100 mb-2" data-status="${escapeHtml(o.status)}">
+                            Mover para <strong>${escapeHtml(o.descricao)}</strong>
+                        </button>`).join('');
+                el('cardDesconto').classList.toggle('d-none', !(ehGerente && acoes.podeAplicarDesconto));
+                el('cardCancelar').classList.toggle('d-none', !(ehGerente && acoes.podeCancelar));
+                el('percentual').max = acoes.descontoMaximo;
+                el('limiteDesconto').textContent = `Máximo de ${acoes.descontoMaximo}% do valor do pedido.`;
+            }
+
+            function renderizarHistorico(registros) {
+                el('cardHistorico').classList.remove('d-none');
+                el('historico').innerHTML = registros.length === 0
+                    ? '<li class="list-group-item text-muted">Sem registros.</li>'
+                    : registros.map(r => `
+                        <li class="list-group-item">
+                            ${dataHora(r.dataHora, true)} - <strong>${escapeHtml(r.usuario)}</strong>
+                            (${escapeHtml(r.perfil)}) - ${escapeHtml(r.operacaoDescricao)}
+                            ${r.alteracoes.map(a => `<div class="text-muted">${escapeHtml(a.campo)}:
+                                ${escapeHtml(a.valorAnterior ?? '-')} &rarr; ${escapeHtml(a.valorNovo ?? '-')}</div>`).join('')}
+                            ${r.justificativa ? `<div><em>Justificativa:</em> ${escapeHtml(r.justificativa)}</div>` : ''}
+                        </li>`).join('');
+            }
+
+            // Executa uma ação, mostra o resultado e recarrega a tela
+            async function executar(acao, textoSucesso) {
+                try {
+                    await acao();
+                    mostrarMensagem(mensagem, textoSucesso, 'sucesso');
+                } catch (e) {
+                    mostrarMensagem(mensagem, e.message, 'erro');
+                }
+                await carregar();
+            }
+
+            el('botoesStatus').addEventListener('click', (evento) => {
+                const botao = evento.target.closest('[data-status]');
+                if (botao) {
+                    executar(() => api(url + '/status?status=' + encodeURIComponent(botao.dataset.status), 'PUT'),
+                        'Status atualizado.');
+                }
+            });
+
+            el('formDesconto').addEventListener('submit', (evento) => {
+                evento.preventDefault();
+                executar(() => api(url + '/desconto', 'POST', {
+                    percentual: Number(el('percentual').value),
+                    justificativa: el('motivoDesconto').value
+                }), 'Desconto aplicado.');
+                el('formDesconto').reset();
+            });
+
+            el('formCancelar').addEventListener('submit', (evento) => {
+                evento.preventDefault();
+                if (!confirm('Confirma o cancelamento? Esta ação não pode ser desfeita.')) {
+                    return;
+                }
+                executar(() => api(url + '/cancelar', 'POST', { justificativa: el('justificativa').value }),
+                    'Pedido cancelado.');
+            });
+
+            carregar();
+        })();
+    </script>
+
+</div>
+
+</body>
+</html>

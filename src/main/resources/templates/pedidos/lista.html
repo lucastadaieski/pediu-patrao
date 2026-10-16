@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Pedidos</title>
+</head>
+<body>
+
+<!-- Lista de pedidos via API: GET /api/pedidos?status=... -->
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-bag me-2 text-primary"></i>Pedidos
+        </h2>
+        <a href="/pedidos/novo" id="btnNovoPedido" class="btn btn-primary d-none">
+            <i class="bi bi-plus-lg me-1"></i> Novo Pedido
+        </a>
+    </div>
+
+    <div id="mensagem"></div>
+
+    <!-- Filtro por status (opções vêm do enum StatusPedido, enviadas pelo controller) -->
+    <div class="d-flex gap-2 mb-3" style="max-width: 420px;">
+        <select id="filtroStatus" class="form-select form-select-sm">
+            <option value="">Todos os status</option>
+            <option th:each="s : ${todosStatus}"
+                    th:value="${s.name()}" th:text="${s.descricao}"></option>
+        </select>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">Pedido</th>
+                        <th>Cliente</th>
+                        <th>Atendimento</th>
+                        <th class="text-center">Itens</th>
+                        <th class="text-end">Total</th>
+                        <th>Status</th>
+                        <th>Entrada</th>
+                        <th class="text-end pe-4"></th>
+                    </tr>
+                </thead>
+                <tbody id="pedidos-tabela">
+                    <tr><td colspan="8" class="text-center text-muted py-4">Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer text-muted small" id="rodape"></div>
+    </div>
+
+    <script>
+        (function () {
+            const tabela = document.getElementById('pedidos-tabela');
+            const filtro = document.getElementById('filtroStatus');
+            const mensagem = document.getElementById('mensagem');
+
+            if (temPerfil('GERENTE', 'ATENDENTE')) {
+                document.getElementById('btnNovoPedido').classList.remove('d-none');
+            }
+
+            async function carregar() {
+                const url = '/api/pedidos' + (filtro.value ? '?status=' + encodeURIComponent(filtro.value) : '');
+                try {
+                    const pedidos = await api(url);
+                    document.getElementById('rodape').textContent = `Total: ${pedidos.length} pedido(s)`;
+                    if (pedidos.length === 0) {
+                        tabela.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-5">Nenhum pedido encontrado.</td></tr>';
+                        return;
+                    }
+                    tabela.innerHTML = pedidos.map(p => `
+                        <tr>
+                            <td class="ps-4 text-muted font-monospace small">${escapeHtml(p.id.slice(-6))}</td>
+                            <td>${escapeHtml(p.clienteNome)}</td>
+                            <td>${escapeHtml(p.tipoAtendimentoDescricao)}</td>
+                            <td class="text-center">${p.quantidadeItens}</td>
+                            <td class="text-end fw-medium">${moeda(p.valorTotal)}</td>
+                            <td>${badgeStatus(p.status, p.statusDescricao)}</td>
+                            <td class="small">${dataHora(p.dataHoraEntrada)}
+                                <span class="text-muted">${escapeHtml(p.responsavelEntrada)}</span></td>
+                            <td class="text-end pe-4">
+                                <a href="/pedidos/${escapeHtml(p.id)}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> Detalhes
+                                </a>
+                            </td>
+                        </tr>`).join('');
+                } catch (e) {
+                    tabela.innerHTML = '';
+                    mostrarMensagem(mensagem, e.message, 'erro');
+                }
+            }
+
+            filtro.addEventListener('change', carregar);
+            carregar();
+        })();
+    </script>
+
+</div>
+
+</body>
+</html>

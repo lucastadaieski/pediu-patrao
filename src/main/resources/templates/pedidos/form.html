@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Novo Pedido</title>
+</head>
+<body>
+
+<!--
+    Novo pedido via API:
+    - clientes: GET /api/clientes      - cardápio: GET /api/produtos
+    - registrar: POST /api/pedidos com { clienteId, tipoAtendimento, observacao, itens:[{produtoId, quantidade}] }
+    A tela mostra uma prévia do total só para orientar o atendente;
+    o valor oficial é calculado no servidor (RF02).
+-->
+<div th:fragment="content">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/pedidos" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+        <h2 class="fw-bold mb-0">Novo Pedido</h2>
+    </div>
+
+    <div id="mensagem"></div>
+
+    <form id="formPedido">
+        <div class="row g-4">
+            <div class="col-lg-4">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        <div class="mb-3">
+                            <label for="clienteId" class="form-label fw-medium"><i class="bi bi-person me-1"></i>Cliente</label>
+                            <select id="clienteId" class="form-select" required>
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-medium d-block">Atendimento</label>
+                            <div class="form-check form-check-inline"
+                                 th:each="t, st : ${tiposAtendimento}">
+                                <input class="form-check-input" type="radio" name="tipoAtendimento"
+                                       th:id="|tipo${st.index}|" th:value="${t.name()}" th:checked="${st.first}">
+                                <label class="form-check-label" th:for="|tipo${st.index}|" th:text="${t.descricao}"></label>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="observacao" class="form-label fw-medium">Observação</label>
+                            <textarea id="observacao" class="form-control" rows="3" maxlength="500" placeholder="Ex: sem cebola"></textarea>
+                        </div>
+
+                        <div class="d-flex justify-content-between mb-3">
+                            <span class="text-muted">Prévia do total</span>
+                            <strong id="previa">R$ 0,00</strong>
+                        </div>
+                        <div class="form-text mb-3">O valor final é calculado pelo servidor a partir do cardápio.</div>
+
+                        <button type="submit" class="btn btn-primary w-100" id="btnRegistrar">
+                            <i class="bi bi-check-lg me-1"></i>Registrar pedido
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-header fw-medium"><i class="bi bi-list-ul me-1"></i>Itens (informe a quantidade)</div>
+                    <div class="card-body p-0">
+                        <table class="table align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-4">Produto</th>
+                                    <th>Tipo</th>
+                                    <th class="text-end">Preço</th>
+                                    <th style="width: 120px;" class="pe-4">Qtd.</th>
+                                </tr>
+                            </thead>
+                            <tbody id="produtos-tabela">
+                                <tr><td colspan="4" class="text-center text-muted py-4">Carregando...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <script>
+        (function () {
+            const mensagem = document.getElementById('mensagem');
+            const selectCliente = document.getElementById('clienteId');
+            const tabelaProdutos = document.getElementById('produtos-tabela');
+            let produtos = [];
+
+            async function carregar() {
+                try {
+                    const [clientes, cardapio] = await Promise.all([api('/api/clientes'), api('/api/produtos')]);
+                    selectCliente.innerHTML = '<option value="">Selecione o cliente</option>' + clientes
+                        .map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.nome)} - ${escapeHtml(c.telefone)}</option>`)
+                        .join('');
+
+                    produtos = cardapio.filter(p => p.ativo);
+                    tabelaProdutos.innerHTML = produtos.length === 0
+                        ? '<tr><td colspan="4" class="text-center text-muted py-4">Nenhum produto ativo no cardápio.</td></tr>'
+                        : produtos.map(p => `
+                            <tr>
+                                <td class="ps-4">${escapeHtml(p.nome)}</td>
+                                <td class="text-muted">${escapeHtml(p.tipo || '')}</td>
+                                <td class="text-end">${moeda(p.preco)}</td>
+                                <td class="pe-4">
+                                    <input type="number" min="0" max="99" class="form-control form-control-sm"
+                                           data-produto="${escapeHtml(p.id)}" placeholder="0">
+                                </td>
+                            </tr>`).join('');
+                } catch (e) {
+                    mostrarMensagem(mensagem, e.message, 'erro');
+                }
+            }
+
+            function itensInformados() {
+                return [...tabelaProdutos.querySelectorAll('[data-produto]')]
+                    .map(input => ({ produtoId: input.dataset.produto, quantidade: parseInt(input.value, 10) || 0 }))
+                    .filter(item => item.quantidade > 0);
+            }
+
+            // Prévia do total (só visual)
+            tabelaProdutos.addEventListener('input', () => {
+                const total = itensInformados().reduce((soma, item) => {
+                    const produto = produtos.find(p => p.id === item.produtoId);
+                    return soma + (produto ? produto.preco * item.quantidade : 0);
+                }, 0);
+                document.getElementById('previa').textContent = moeda(total);
+            });
+
+            document.getElementById('formPedido').addEventListener('submit', async (evento) => {
+                evento.preventDefault();
+                const pedido = {
+                    clienteId: selectCliente.value,
+                    tipoAtendimento: document.querySelector('input[name="tipoAtendimento"]:checked').value,
+                    observacao: document.getElementById('observacao').value,
+                    itens: itensInformados()
+                };
+                if (pedido.itens.length === 0) {
+                    mostrarMensagem(mensagem, 'Informe a quantidade de ao menos um produto.', 'erro');
+                    return;
+                }
+                const botao = document.getElementById('btnRegistrar');
+                botao.disabled = true;
+                try {
+                    const criado = await api('/api/pedidos', 'POST', pedido);
+                    sessionStorage.setItem('aviso', 'Pedido registrado. Total: ' + moeda(criado.valorTotal));
+                    window.location.href = '/pedidos/' + criado.id;
+                } catch (e) {
+                    mostrarMensagem(mensagem, e.message, 'erro');
+                    botao.disabled = false;
+                }
+            });
+
+            carregar();
+        })();
+    </script>
+
+</div>
+
+</body>
+</html>
