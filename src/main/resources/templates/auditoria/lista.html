@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Auditoria</title>
+</head>
+<body>
+
+<!-- Consulta da auditoria via API somente leitura: GET /api/auditoria -->
+<div th:fragment="content">
+
+    <h2 class="fw-bold mb-2"><i class="bi bi-journal-text me-2 text-primary"></i>Auditoria</h2>
+    <p class="text-muted small mb-4">
+        Registros somente leitura. Não há opção de alterar ou excluir, nem pela tela nem pela API.
+        Exibindo os 300 mais recentes (ou todos de uma entidade/id).
+    </p>
+
+    <div id="mensagem"></div>
+
+    <form id="filtros" class="row g-2 mb-3">
+        <div class="col-md-2">
+            <select name="entidade" class="form-select form-select-sm">
+                <option value="">Todas as entidades</option>
+                <option>Pedido</option>
+                <option>Cliente</option>
+                <option>Produto</option>
+                <option>Usuario</option>
+                <option>Rota</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <input type="text" name="entidadeId" class="form-control form-control-sm" placeholder="ID da entidade">
+        </div>
+        <div class="col-md-2">
+            <input type="text" name="usuario" class="form-control form-control-sm" placeholder="Usuário">
+        </div>
+        <div class="col-md-3">
+            <select name="operacao" class="form-select form-select-sm">
+                <option value="">Todas as operações</option>
+                <option th:each="o : ${operacoes}" th:value="${o.name()}" th:text="${o.descricao}"></option>
+            </select>
+        </div>
+        <div class="col-md-2 d-flex gap-2">
+            <button type="submit" class="btn btn-sm btn-primary">Filtrar</button>
+            <button type="reset" class="btn btn-sm btn-outline-secondary">Limpar</button>
+        </div>
+    </form>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-sm table-hover align-middle mb-0 small">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-3">Data e hora</th>
+                        <th>Usuário</th>
+                        <th>Operação</th>
+                        <th>Entidade</th>
+                        <th>Campos alterados</th>
+                        <th class="pe-3">Justificativa</th>
+                    </tr>
+                </thead>
+                <tbody id="registros">
+                    <tr><td colspan="6" class="text-center text-muted py-4">Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const form = document.getElementById('filtros');
+            const tabela = document.getElementById('registros');
+            const mensagem = document.getElementById('mensagem');
+
+            async function carregar() {
+                // Monta ?entidade=...&usuario=... só com os filtros preenchidos
+                const parametros = new URLSearchParams();
+                new FormData(form).forEach((valor, nome) => { if (valor.trim()) { parametros.append(nome, valor.trim()); } });
+                try {
+                    const registros = await api('/api/auditoria?' + parametros);
+                    tabela.innerHTML = registros.length === 0
+                        ? '<tr><td colspan="6" class="text-center text-muted py-5">Nenhum registro encontrado.</td></tr>'
+                        : registros.map(r => `
+                            <tr class="${r.operacao === 'ACESSO_NEGADO' ? 'table-danger' : ''}">
+                                <td class="ps-3 text-nowrap">${dataHora(r.dataHora, true)}</td>
+                                <td><strong>${escapeHtml(r.usuario)}</strong> <span class="badge bg-secondary">${escapeHtml(r.perfil)}</span></td>
+                                <td>${escapeHtml(r.operacaoDescricao)}</td>
+                                <td>${escapeHtml(r.entidade)}
+                                    <div class="text-muted font-monospace" style="font-size: .75rem;">${escapeHtml(r.entidadeId)}</div></td>
+                                <td>${r.alteracoes.map(a => `<div><span class="fw-medium">${escapeHtml(a.campo)}</span>:
+                                    <span class="text-muted">${escapeHtml(a.valorAnterior ?? '-')}</span>
+                                    &rarr; ${escapeHtml(a.valorNovo ?? '-')}</div>`).join('')}</td>
+                                <td class="pe-3">${escapeHtml(r.justificativa ?? '')}</td>
+                            </tr>`).join('');
+                } catch (e) {
+                    tabela.innerHTML = '';
+                    mostrarMensagem(mensagem, e.message, 'erro');
+                }
+            }
+
+            form.addEventListener('submit', (evento) => { evento.preventDefault(); carregar(); });
+            form.addEventListener('reset', () => setTimeout(carregar, 0));
+            carregar();
+        })();
+    </script>
+
+</div>
+
+</body>
+</html>
