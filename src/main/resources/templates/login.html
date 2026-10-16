@@ -37,7 +37,10 @@
             <img th:src="@{/images/logo.png}" alt="Logo" class="logo">
             <h3 class="mb-4">Bem-vindo</h3>
             
-            <!-- Formulário de Login -->
+            <div class="alert alert-danger py-2" th:if="${param.error}">Usuário ou senha inválidos.</div>
+            <div class="alert alert-success py-2" th:if="${param.logout}">Você saiu do sistema.</div>
+
+            <!-- Formulário de Login (o Thymeleaf inclui o token CSRF automaticamente) -->
             <form th:action="@{/login}" method="post">
                 <div class="form-group mb-3">
                     <label for="username" class="form-label">Usuário</label>
@@ -50,10 +53,7 @@
                 <button type="submit" class="btn btn-primary w-100">Entrar</button>
             </form>
             
-            <!-- Link de recuperação de senha e outros -->
-            <div class="mt-3">
-                <a href="#" class="text-decoration-none">Esqueceu sua senha?</a>
-            </div>
+            <div class="mt-3 small text-muted">Esqueceu a senha? Procure o administrador do sistema.</div>
         </div>
     </div>
     

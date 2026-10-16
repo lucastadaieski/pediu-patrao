@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <title>Home</title>
 </head>
@@ -7,7 +7,7 @@
 
 <div class="container-fluid vh-100 d-flex justify-content-center align-items-center" th:fragment="content">
     <div class="text-center">
-        <h1>Bem-vindo!!!</h1>
+        <h1>Bem-vindo, <span sec:authentication="name">usuário</span>!</h1>
         <img th:src="@{/images/logo.png}" alt="Logo" width="500" height="500">
     </div>
 </div>
