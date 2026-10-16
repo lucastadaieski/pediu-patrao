@@ -1,95 +1,112 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-    <head>
-        <meta charset="UTF-8">
-        <title>Gerenciar Produtos</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
-        <link rel="stylesheet" th:href="@{/css/style.css}">
-    </head>
-    <body>
-        <!-- Sidebar incluído como fragmento -->
-        <aside>
-            <div th:replace="~{fragments/sidebar :: sidebar}"></div>
-        </aside>
+<head>
+    <title>Produtos</title>
+</head>
+<body>
 
-        <div class="container mt-5">
-            <h1 class="mb-4">Gestão de Produtos</h1>
+<!--
+    Tela que consome a API REST: o Thymeleaf entrega só a estrutura,
+    e o JavaScript busca os produtos em GET /api/produtos.
+-->
+<div th:fragment="content">
 
-            <!-- Botão para abrir o formulário -->
-            <button class="btn btn-primary mb-3" data-bs-toggle="collapse" data-bs-target="#formularioProduto">
-                Novo Produto
-            </button>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-boxes me-2 text-primary"></i>Produtos
+        </h2>
+        <a href="/produtos/novo" id="btnNovoProduto" class="btn btn-primary d-none">
+            <i class="bi bi-plus-lg me-1"></i> Novo Produto
+        </a>
+    </div>
 
-            <!-- Formulário de Cadastro -->
-            <div class="collapse" id="formularioProduto">
-                <div class="card card-body">
-                    <form th:action="@{/api/produtos}" method="post" id="produtoForm">
-                        <div class="mb-3">
-                            <label for="nome" class="form-label">Nome do Produto</label>
-                            <input type="text" id="nome" name="nome" class="form-control" placeholder="Nome do Produto" required>
-                        </div>
+    <div id="mensagem"></div>
 
-                        <div class="mb-3">
-                            <label for="tipo" class="form-label">Tipo do Produto</label>
-                            <select id="tipo" name="tipo" class="form-select" required>
-                                <option value="" disabled selected>Selecione o Tipo</option>
-                                <option value="Pizza">Pizza</option>
-                                <option value="Lanche">Lanche</option>
-                                <option value="Bebida">Bebida</option>
-                                <option value="Porção">Porção</option>
-                                <option value="Adicional">Adicional</option>
-                            </select>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="preco" class="form-label">Preço</label>
-                            <input type="number" id="preco" name="preco" class="form-control" placeholder="Preço (R$)" step="0.01" required>
-                        </div>
-
-                        <div class="form-check mb-3">
-                            <input type="checkbox" id="ativo" name="ativo" class="form-check-input">
-                            <label for="ativo" class="form-check-label">Produto Ativo</label>
-                        </div>
-
-                        <div class="d-flex justify-content-end">
-                            <button type="submit" class="btn btn-success">Salvar</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <!-- Listagem de Produtos -->
-            <table class="table table-bordered table-striped mt-3">
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <table class="table table-hover align-middle mb-0">
                 <thead class="table-dark">
                     <tr>
-                        <th>ID</th>
-                        <th>Nome</th>
+                        <th class="ps-4">Nome</th>
                         <th>Tipo</th>
-                        <th>Preço</th>
+                        <th class="text-end">Preço</th>
                         <th>Ativo</th>
-                        <th>Ações</th>
+                        <th class="text-end pe-4"></th>
                     </tr>
                 </thead>
-                <tbody>
-                    <!-- Loop para listar os produtos -->
-                    <tr th:each="produto : ${produtos}">
-                        <td th:text="${produto.id}"></td>
-                        <td th:text="${produto.nome}"></td>
-                        <td th:text="${produto.tipo}"></td>
-                        <td th:text="${#numbers.formatDecimal(produto.preco, 1, 'COMMA', 2, 'POINT')}"></td>
-                        <td th:text="${produto.ativo ? 'Sim' : 'Não'}">Sim</td>
-                        <td>
-                            <a th:href="@{/api/produtos/{id}(id=${produto.id})}" class="btn btn-warning btn-sm">Editar</a>
-                            <a th:href="@{/api/produtos/{id}(id=${produto.id})}" class="btn btn-danger btn-sm" 
-                               onclick="return confirm('Tem certeza que deseja excluir este produto?');">
-                                Excluir
-                            </a>
-                        </td>
-                    </tr>
+                <tbody id="produtos-tabela">
+                    <tr><td colspan="5" class="text-center text-muted py-4">Carregando...</td></tr>
                 </tbody>
             </table>
         </div>
-        <script th:src="@{/js/script.js}"></script>
-    </body>
+    </div>
+
+    <script>
+        (function () {
+            const tabela = document.getElementById('produtos-tabela');
+            const mensagem = document.getElementById('mensagem');
+            const podeEditar = temPerfil('ADMIN', 'GERENTE');
+
+            if (podeEditar) {
+                document.getElementById('btnNovoProduto').classList.remove('d-none');
+            }
+
+            // Mensagem deixada pela tela de cadastro antes de voltar para cá
+            const aviso = sessionStorage.getItem('aviso');
+            if (aviso) {
+                mostrarMensagem(mensagem, aviso, 'sucesso');
+                sessionStorage.removeItem('aviso');
+            }
+
+            async function carregar() {
+                try {
+                    const produtos = await api('/api/produtos');
+                    if (produtos.length === 0) {
+                        tabela.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-5">Nenhum produto cadastrado.</td></tr>';
+                        return;
+                    }
+                    tabela.innerHTML = produtos.map(p => `
+                        <tr>
+                            <td class="ps-4">${escapeHtml(p.nome)}</td>
+                            <td>${escapeHtml(p.tipo || '-')}</td>
+                            <td class="text-end">${p.preco != null ? moeda(p.preco) : '-'}</td>
+                            <td><span class="badge ${p.ativo ? 'bg-success' : 'bg-secondary'}">${p.ativo ? 'Sim' : 'Não'}</span></td>
+                            <td class="text-end pe-4">
+                                ${podeEditar ? `
+                                <a href="/produtos/editar/${escapeHtml(p.id)}" class="btn btn-sm btn-outline-primary me-1">
+                                    <i class="bi bi-pencil-fill"></i> Editar
+                                </a>
+                                <button class="btn btn-sm btn-outline-danger" data-excluir="${escapeHtml(p.id)}">
+                                    <i class="bi bi-trash-fill"></i> Excluir
+                                </button>` : ''}
+                            </td>
+                        </tr>`).join('');
+                } catch (e) {
+                    tabela.innerHTML = '';
+                    mostrarMensagem(mensagem, e.message, 'erro');
+                }
+            }
+
+            // Um único "ouvinte" para todos os botões Excluir da tabela
+            tabela.addEventListener('click', async (evento) => {
+                const botao = evento.target.closest('[data-excluir]');
+                if (!botao || !confirm('Tem certeza que deseja excluir este produto?')) {
+                    return;
+                }
+                try {
+                    await api('/api/produtos/' + botao.dataset.excluir, 'DELETE');
+                    mostrarMensagem(mensagem, 'Produto excluído.', 'sucesso');
+                    carregar();
+                } catch (e) {
+                    mostrarMensagem(mensagem, e.message, 'erro');
+                }
+            });
+
+            carregar();
+        })();
+    </script>
+
+</div>
+
+</body>
 </html>

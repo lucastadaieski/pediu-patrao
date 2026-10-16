@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Produto</title>
+</head>
+<body>
+
+<!--
+    Cadastro/edição de produto via API:
+    novo  -> POST /api/produtos
+    edição -> GET /api/produtos/{id} para preencher, PUT /api/produtos/{id} para salvar
+-->
+<div th:fragment="content">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/produtos" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i></a>
+        <h2 class="fw-bold mb-0" id="titulo">Novo Produto</h2>
+    </div>
+
+    <div id="mensagem" style="max-width: 540px;"></div>
+
+    <!-- id do produto em edição (vazio no cadastro) -->
+    <div class="card shadow-sm" style="max-width: 540px;" id="produto-app" th:data-id="${produtoId}">
+        <div class="card-body p-4">
+            <form id="formProduto">
+                <div class="mb-3">
+                    <label for="nome" class="form-label fw-medium">Nome</label>
+                    <input type="text" id="nome" class="form-control" required>
+                </div>
+
+                <div class="mb-3">
+                    <label for="tipo" class="form-label fw-medium">Tipo</label>
+                    <select id="tipo" class="form-select" required>
+                        <option value="">Selecione o tipo</option>
+                        <option>Pizza</option>
+                        <option>Esfiha</option>
+                        <option>Lanche</option>
+                        <option>Bebida</option>
+                        <option>Porção</option>
+                        <option>Adicional</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label for="preco" class="form-label fw-medium">Preço (R$)</label>
+                    <input type="number" id="preco" class="form-control" step="0.01" min="0.01" required>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input type="checkbox" class="form-check-input" id="ativo" checked>
+                    <label class="form-check-label" for="ativo">Produto ativo (aparece no cardápio)</label>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>Salvar</button>
+                    <a href="/produtos" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        (function () {
+            const id = document.getElementById('produto-app').dataset.id || null;
+            const mensagem = document.getElementById('mensagem');
+            const campo = nome => document.getElementById(nome);
+
+            if (id) {
+                campo('titulo').textContent = 'Editar Produto';
+                api('/api/produtos/' + id)
+                    .then(p => {
+                        campo('nome').value = p.nome || '';
+                        campo('tipo').value = p.tipo || '';
+                        campo('preco').value = p.preco ?? '';
+                        campo('ativo').checked = !!p.ativo;
+                    })
+                    .catch(e => mostrarMensagem(mensagem, e.message, 'erro'));
+            }
+
+            campo('formProduto').addEventListener('submit', async (evento) => {
+                evento.preventDefault();
+                const produto = {
+                    nome: campo('nome').value.trim(),
+                    tipo: campo('tipo').value,
+                    preco: campo('preco').value === '' ? null : Number(campo('preco').value),
+                    ativo: campo('ativo').checked
+                };
+                try {
+                    if (id) {
+                        await api('/api/produtos/' + id, 'PUT', produto);
+                    } else {
+                        await api('/api/produtos', 'POST', produto);
+                    }
+                    sessionStorage.setItem('aviso', id ? 'Produto atualizado.' : 'Produto cadastrado.');
+                    window.location.href = '/produtos';
+                } catch (e) {
+                    mostrarMensagem(mensagem, e.message, 'erro');
+                }
+            });
+        })();
+    </script>
+
+</div>
+
+</body>
+</html>

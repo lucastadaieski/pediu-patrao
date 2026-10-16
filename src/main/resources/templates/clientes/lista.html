@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <title>Lista de Clientes</title>
 </head>
@@ -9,10 +9,23 @@
         <h2 class="fw-bold mb-0">
             <i class="bi bi-person-raised-hand me-2 text-primary"></i>Clientes
         </h2>
-        <a href="/clientes/novo" class="btn btn-primary">
+        <a href="/clientes/novo" class="btn btn-primary" sec:authorize="hasRole('ATENDENTE')">
             <i class="bi bi-plus-lg me-1"></i> Novo Cliente
         </a>
     </div>
+
+    <!-- Mensagens de feedback -->
+    <div class="alert alert-success alert-dismissible fade show" th:if="${sucesso}" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><span th:text="${sucesso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div class="alert alert-danger alert-dismissible fade show" th:if="${erro}" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${erro}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Marcador: só existe na página se o usuário for ATENDENTE (usado pelo JS para mostrar os botões) -->
+    <span id="podeEditarClientes" class="d-none" sec:authorize="hasRole('ATENDENTE')"></span>
 
     <!-- Tabela de clientes -->
     <div class="card shadow-sm">
@@ -36,6 +49,7 @@
     <script>
         const API_URL = '/api/clientes';
         const tabelaClientes = document.getElementById('clientes-tabela');
+        const podeEditar = document.getElementById('podeEditarClientes') !== null;
 
         function formatarEndereco(cliente) {
             const partes = [
@@ -47,11 +61,15 @@
                 cliente.estado
             ].filter(p => p && p.trim() !== '');
 
-            return partes.length > 0 ? partes.join(', ') : (cliente.endereco || '—');
+            return escapeHtml(partes.length > 0 ? partes.join(', ') : (cliente.endereco || '-'));
         }
 
         async function carregarClientes() {
             const response = await fetch(API_URL);
+            if (!response.ok) {
+                tabelaClientes.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">Não foi possível carregar os clientes.</td></tr>';
+                return;
+            }
             const clientes = await response.json();
             tabelaClientes.innerHTML = '';
 
@@ -68,18 +86,20 @@
 
             clientes.forEach(cliente => {
                 const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${cliente.nome || '—'}</td>
-                    <td>${cliente.telefone || '—'}</td>
-                    <td>${formatarEndereco(cliente)}</td>
-                    <td class="text-end pe-4">
-                        <a href="/clientes/editar/${cliente.id}" class="btn btn-sm btn-outline-primary me-1">
+                const id = escapeHtml(cliente.id);
+                const acoes = podeEditar ? `
+                        <a href="/clientes/editar/${id}" class="btn btn-sm btn-outline-primary me-1">
                             <i class="bi bi-pencil-fill"></i> Editar
                         </a>
-                        <button class="btn btn-sm btn-outline-danger" onclick="excluirCliente('${cliente.id}')">
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirCliente('${id}')">
                             <i class="bi bi-trash-fill"></i> Excluir
-                        </button>
-                    </td>
+                        </button>` : '';
+                // escapeHtml: impede que um nome como <script> vire código na página
+                row.innerHTML = `
+                    <td>${escapeHtml(cliente.nome || '-')}</td>
+                    <td>${escapeHtml(cliente.telefone || '-')}</td>
+                    <td>${formatarEndereco(cliente)}</td>
+                    <td class="text-end pe-4">${acoes}</td>
                 `;
                 tabelaClientes.appendChild(row);
             });
@@ -87,12 +107,15 @@
 
         async function excluirCliente(id) {
             if (confirm('Tem certeza que deseja excluir este cliente?')) {
-                const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                // csrfHeaders(): envia o token CSRF (definido no layout.html)
+                const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE', headers: csrfHeaders() });
                 if (response.ok) {
                     alert('Cliente excluído com sucesso!');
                     carregarClientes();
                 } else {
-                    alert('Erro ao excluir o cliente.');
+                    let mensagem = 'Erro ao excluir o cliente.';
+                    try { mensagem = (await response.json()).mensagem || mensagem; } catch (e) { }
+                    alert(mensagem);
                 }
             }
         }
