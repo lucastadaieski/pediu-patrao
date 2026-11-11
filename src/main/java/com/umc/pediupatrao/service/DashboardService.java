@@ -31,12 +31,6 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Service;
 
-/**
- * Busca os pedidos no MongoDB conforme o filtro e repassa para a DashboardCalculadora.
- *
- * O filtro (período, status, tipo de atendimento) é aplicado NO BANCO, usando o índice de
- * "dataHoraEntrada" criado no MongoInitConfig. Só os pedidos do período vêm para a memória.
- */
 @Service
 public class DashboardService {
 

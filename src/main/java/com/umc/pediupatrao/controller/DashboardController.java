@@ -22,19 +22,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * API do Dashboard Administrativo. Somente leitura (só GET) e somente ADMIN e GERENTE.
- *
- * Todos os endpoints aceitam os mesmos filtros (RF05), todos opcionais:
- *   inicio, fim       datas no formato AAAA-MM-DD (padrão: últimos 30 dias)
- *   status            RECEBIDO, EM_PREPARACAO, ..., CANCELADO
- *   tipoAtendimento   ENTREGA ou RETIRADA
- *
- * Exemplo: GET /api/dashboard/resumo?inicio=2026-11-01&fim=2026-11-10&tipoAtendimento=ENTREGA
- */
 @RestController
 @RequestMapping("/api/dashboard")
-@PreAuthorize("hasAnyRole('ADMIN','GERENTE')") // reforço; a regra principal está no SecurityConfig
+@PreAuthorize("hasAnyRole('ADMIN','GERENTE')")
 public class DashboardController {
 
     private final DashboardService dashboardService;

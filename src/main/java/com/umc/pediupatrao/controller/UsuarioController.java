@@ -16,11 +16,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * API de usuários (somente ADMIN).
- * ANTES: rota liberada sem login e recebia/devolvia a entidade com a senha.
- * AGORA: exige ADMIN, recebe UsuarioRequest e devolve UsuarioResponse (sem senha).
- */
 @RestController
 @RequestMapping("/api/usuarios")
 public class UsuarioController {

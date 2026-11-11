@@ -6,12 +6,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 
-/**
- * Filtros comuns a todos os endpoints do dashboard (RF05).
- *
- * O período é fechado nas duas pontas em dias (de "inicio" 00:00 até "fim" 23:59:59).
- * Status e tipo de atendimento são opcionais: null significa "todos".
- */
+
 public record FiltroDashboard(LocalDate inicio, LocalDate fim, StatusPedido status,
                               TipoAtendimento tipoAtendimento) {
 

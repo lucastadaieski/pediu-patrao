@@ -18,9 +18,9 @@
 | Requisitos funcionais e não funcionais, modelagem e projeto | [docs/DOCUMENTACAO.md](docs/DOCUMENTACAO.md) |
 | Documentação dos endpoints (parâmetros, exemplos e erros) | [docs/DOCUMENTACAO.md, seção 6](docs/DOCUMENTACAO.md#6-documentação-dos-endpoints) |
 | Evidências de testes | [docs/DOCUMENTACAO.md, seção 7](docs/DOCUMENTACAO.md#7-testes-e-evidências) e [docs/evidencias/](docs/evidencias/) |
-| Requisições prontas | [docs/api-dashboard.http](docs/api-dashboard.http) (IntelliJ) e [docs/evidencias/testar-api.sh](docs/evidencias/testar-api.sh) |
+| Script de testes da API | [docs/evidencias/testar-api.sh](docs/evidencias/testar-api.sh) |
 | Branch da implementação (Gitflow) | `feature/dashboard-api` → `develop` → `main` |
-| Vídeo de apresentação | _link do vídeo_ ([roteiro](docs/ROTEIRO_VIDEO.md)) |
+| Vídeo de apresentação | _link do vídeo_ 
 
 ---
 
