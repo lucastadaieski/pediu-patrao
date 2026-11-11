@@ -2,13 +2,7 @@
 
 **Documento de análise, projeto, API e testes**
 
-| | |
-|---|---|
-| **Aluno** | Lucas Tadaieski (RA: _000000_) |
-| **Curso** | Engenharia de Software, UMC |
-| **Repositório** | https://github.com/lucastadaieski/pediu-patrao |
-| **Branch da implementação** | `feature/dashboard-api` (integrada em `develop` e depois em `main`) |
-| **Vídeo de apresentação** | _link do vídeo_ |
+**Vídeo de apresentação** | _link do vídeo_ 
 
 ## Sumário
 
