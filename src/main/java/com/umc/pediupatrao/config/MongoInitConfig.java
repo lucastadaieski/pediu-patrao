@@ -2,7 +2,9 @@ package com.umc.pediupatrao.config;
 
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
+import org.springframework.data.mongodb.core.index.Index;
 
 @Configuration
 public class MongoInitConfig implements CommandLineRunner {
@@ -33,5 +35,10 @@ public class MongoInitConfig implements CommandLineRunner {
         if (!mongoTemplate.collectionExists("horariosAtendimento")) {
             mongoTemplate.createCollection("horariosAtendimento");
         }
+
+        // Índice usado pelo dashboard: toda consulta filtra os pedidos por período de entrada.
+        // Se o índice já existir, o MongoDB não faz nada.
+        mongoTemplate.indexOps("pedidos")
+                .ensureIndex(new Index().on("dataHoraEntrada", Sort.Direction.DESC).named("idx_pedidos_entrada"));
     }
 }
