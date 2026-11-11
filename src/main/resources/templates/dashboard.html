@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+
+<!--
+    Dashboard Administrativo (ADMIN e GERENTE).
+    Toda a tela é montada em JavaScript consumindo /api/dashboard/* (RF06),
+    no mesmo padrão das telas de clientes e pedidos. Nenhum cálculo é feito aqui:
+    os números chegam prontos do DashboardService.
+-->
+<div th:fragment="content" id="dashboard">
+
+    <style>
+        #dashboard { --serie-1: #2a78d6; --serie-2: #eb6834; --texto-2: #52514e; --grade: #e9e9e6; }
+        #dashboard .kpi-valor { font-size: 1.75rem; font-weight: 700; line-height: 1.1; }
+        #dashboard .kpi-rotulo { font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; color: var(--texto-2); }
+        #dashboard .kpi-comparacao { font-size: .8rem; }
+        #dashboard .grafico { position: relative; height: 260px; }
+        #dashboard .grafico-baixo { position: relative; height: 220px; }
+        #dashboard .secao { position: relative; min-height: 120px; }
+        #dashboard .secao-estado { position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+                                   background: rgba(255,255,255,.85); z-index: 2; text-align: center; padding: 1rem; }
+        #dashboard .secao[data-estado="carregando"] .secao-estado,
+        #dashboard .secao[data-estado="vazio"] .secao-estado,
+        #dashboard .secao[data-estado="erro"] .secao-estado { display: flex; }
+        #dashboard .barra-ranking { height: 6px; border-radius: 3px; background: var(--serie-1); }
+        #dashboard .mini-stat { border-left: 3px solid var(--grade); padding-left: .75rem; }
+        #dashboard .table td, #dashboard .table th { white-space: nowrap; }
+    </style>
+
+    <!-- Cabeçalho -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="fw-bold mb-0"><i class="bi bi-graph-up-arrow me-2 text-primary"></i>Dashboard</h2>
+        <div class="d-flex align-items-center gap-3">
+            <span class="small text-muted" id="atualizadoEm">Carregando...</span>
+            <div class="form-check form-switch mb-0" title="Atualiza os dados a cada 60 segundos">
+                <input class="form-check-input" type="checkbox" id="autoAtualizar" checked>
+                <label class="form-check-label small" for="autoAtualizar">Atualizar a cada 60 s</label>
+            </div>
+            <button class="btn btn-sm btn-outline-primary" id="btnAtualizar">
+                <i class="bi bi-arrow-clockwise me-1"></i>Atualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros (RF05) -->
+    <form class="card shadow-sm mb-3" id="formFiltros" novalidate>
+        <div class="card-body py-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1" for="fInicio">Início</label>
+                    <input type="date" class="form-control form-control-sm" id="fInicio">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1" for="fFim">Fim</label>
+                    <input type="date" class="form-control form-control-sm" id="fFim">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1" for="fStatus">Status</label>
+                    <select class="form-select form-select-sm" id="fStatus"><option value="">Todos</option></select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small mb-1" for="fTipo">Atendimento</label>
+                    <select class="form-select form-select-sm" id="fTipo"><option value="">Todos</option></select>
+                </div>
+                <div class="col-12 col-md-4 d-flex flex-wrap gap-1">
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Atalhos de período">
+                        <button type="button" class="btn btn-outline-secondary" data-atalho="hoje">Hoje</button>
+                        <button type="button" class="btn btn-outline-secondary" data-atalho="7">7 dias</button>
+                        <button type="button" class="btn btn-outline-secondary" data-atalho="30">30 dias</button>
+                        <button type="button" class="btn btn-outline-secondary" data-atalho="mes">Este mês</button>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-funnel me-1"></i>Aplicar</button>
+                    <button type="button" class="btn btn-sm btn-link text-decoration-none" id="btnLimpar">Limpar</button>
+                </div>
+            </div>
+        </div>
+    </form>
+
+    <div id="mensagem"></div>
+
+    <!-- RF01: indicadores gerais -->
+    <div class="row g-3 mb-3 secao" id="secResumo" data-estado="carregando">
+        <div class="secao-estado"></div>
+        <div class="col-6 col-xl-3">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="kpi-rotulo">Faturamento</div>
+                <div class="kpi-valor" id="kFaturamento">-</div>
+                <div class="kpi-comparacao" id="cFaturamento"></div>
+            </div></div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="kpi-rotulo">Pedidos</div>
+                <div class="kpi-valor" id="kPedidos">-</div>
+                <div class="kpi-comparacao" id="cPedidos"></div>
+            </div></div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="kpi-rotulo">Ticket médio</div>
+                <div class="kpi-valor" id="kTicket">-</div>
+                <div class="kpi-comparacao" id="cTicket"></div>
+            </div></div>
+        </div>
+        <div class="col-6 col-xl-3">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="kpi-rotulo">Taxa de cancelamento</div>
+                <div class="kpi-valor" id="kCancelamento">-</div>
+                <div class="kpi-comparacao" id="cCancelamento"></div>
+            </div></div>
+        </div>
+        <div class="col-12">
+            <div class="small text-muted" id="resumoRodape"></div>
+        </div>
+    </div>
+
+    <!-- RF02: série temporal e tipo de atendimento -->
+    <div class="row g-3 mb-3">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <span class="fw-semibold" id="tituloSerie">Faturamento no período</span>
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm w-auto" id="serieMetrica" aria-label="Métrica">
+                            <option value="faturamento">Faturamento</option>
+                            <option value="pedidos">Pedidos</option>
+                            <option value="ticketMedio">Ticket médio</option>
+                        </select>
+                        <select class="form-select form-select-sm w-auto" id="serieAgrupamento" aria-label="Agrupamento">
+                            <option value="DIA">Por dia</option>
+                            <option value="SEMANA">Por semana</option>
+                            <option value="MES">Por mês</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body secao" id="secSerie" data-estado="carregando">
+                    <div class="secao-estado"></div>
+                    <div class="grafico"><canvas id="grSerie" aria-label="Gráfico da série de vendas" role="img"></canvas></div>
+                    <div class="small text-muted mt-2" id="avisoSerie"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold">Faturamento por atendimento</div>
+                <div class="card-body secao" id="secTipo" data-estado="carregando">
+                    <div class="secao-estado"></div>
+                    <div class="grafico-baixo"><canvas id="grTipo" aria-label="Gráfico por tipo de atendimento" role="img"></canvas></div>
+                    <ul class="list-unstyled small mt-3 mb-0" id="legendaTipo"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RF02: tendências por hora e por dia da semana -->
+    <div class="row g-3 mb-3">
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between">
+                    <span class="fw-semibold">Pedidos por hora do dia</span>
+                    <span class="small text-muted" id="picoHora"></span>
+                </div>
+                <div class="card-body secao" id="secHora" data-estado="carregando">
+                    <div class="secao-estado"></div>
+                    <div class="grafico-baixo"><canvas id="grHora" aria-label="Gráfico de pedidos por hora" role="img"></canvas></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between">
+                    <span class="fw-semibold">Pedidos por dia da semana</span>
+                    <span class="small text-muted" id="picoDia"></span>
+                </div>
+                <div class="card-body secao" id="secDia" data-estado="carregando">
+                    <div class="secao-estado"></div>
+                    <div class="grafico-baixo"><canvas id="grDia" aria-label="Gráfico de pedidos por dia da semana" role="img"></canvas></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RF03 e RF04: situação dos pedidos e ranking de produtos -->
+    <div class="row g-3 mb-3">
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold">Situação dos pedidos</div>
+                <div class="card-body secao" id="secSituacao" data-estado="carregando">
+                    <div class="secao-estado"></div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-4"><div class="mini-stat">
+                            <div class="small text-muted">Em andamento</div>
+                            <div class="fs-5 fw-bold" id="sAndamento">-</div>
+                        </div></div>
+                        <div class="col-4"><div class="mini-stat">
+                            <div class="small text-muted">Atrasados</div>
+                            <div class="fs-5 fw-bold" id="sAtrasados">-</div>
+                            <div class="small text-muted" id="sAtrasadosRotulo"></div>
+                        </div></div>
+                        <div class="col-4"><div class="mini-stat">
+                            <div class="small text-muted">Tempo médio</div>
+                            <div class="fs-5 fw-bold" id="sTempo">-</div>
+                        </div></div>
+                    </div>
+                    <div class="grafico-baixo"><canvas id="grStatus" aria-label="Gráfico de pedidos por status" role="img"></canvas></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-7">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <span class="fw-semibold">Produtos mais vendidos</span>
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm w-auto" id="rkCategoria" aria-label="Categoria">
+                            <option value="">Todas as categorias</option>
+                        </select>
+                        <select class="form-select form-select-sm w-auto" id="rkCriterio" aria-label="Critério"></select>
+                        <select class="form-select form-select-sm w-auto" id="rkLimite" aria-label="Quantidade">
+                            <option value="5">Top 5</option>
+                            <option value="10" selected>Top 10</option>
+                            <option value="20">Top 20</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body p-0 secao" id="secRanking" data-estado="carregando">
+                    <div class="secao-estado"></div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="ps-3">#</th>
+                                    <th>Produto</th>
+                                    <th>Categoria</th>
+                                    <th class="text-end">Qtd.</th>
+                                    <th class="text-end">Faturamento</th>
+                                    <th style="width: 22%">Part. no faturamento</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbRanking"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RF03: últimos pedidos -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <span class="fw-semibold">Últimos pedidos do período</span>
+            <a href="/pedidos" class="small">Ver todos os pedidos</a>
+        </div>
+        <div class="card-body p-0 secao" id="secRecentes" data-estado="carregando">
+            <div class="secao-estado"></div>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Pedido</th>
+                            <th>Cliente</th>
+                            <th>Atendimento</th>
+                            <th>Status</th>
+                            <th class="text-center">Itens</th>
+                            <th class="text-end">Total</th>
+                            <th>Entrada</th>
+                            <th class="pe-3"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbRecentes"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+        (function () {
+            const INTERVALO_MS = 60000;
+            const $ = id => document.getElementById(id);
+            const css = getComputedStyle($('dashboard'));
+            const COR_1 = css.getPropertyValue('--serie-1').trim();
+            const COR_2 = css.getPropertyValue('--serie-2').trim();
+            const COR_GRADE = css.getPropertyValue('--grade').trim();
+            const COR_TEXTO = css.getPropertyValue('--texto-2').trim();
+
+            const graficos = {};
+            let carregando = false;
+            let timer = null;
+
+            // ---------- Formatação ----------
+            const numero = v => Number(v || 0).toLocaleString('pt-BR');
+            const pct = v => v === null || v === undefined ? '-' :
+                Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + '%';
+            const dataBR = iso => iso ? iso.split('-').reverse().join('/') : '';
+            const isoLocal = d => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+            // Variação contra o período anterior. "inverter" = subir é ruim (cancelamento).
+            function comparacao(valor, sufixo, inverter) {
+                if (valor === null || valor === undefined) {
+                    return '<span class="text-muted">sem base no período anterior</span>';
+                }
+                const n = Number(valor);
+                if (n === 0) { return '<span class="text-muted"><i class="bi bi-dash"></i> igual ao período anterior</span>'; }
+                const bom = inverter ? n < 0 : n > 0;
+                const seta = n > 0 ? 'bi-arrow-up-right' : 'bi-arrow-down-right';
+                const texto = (n > 0 ? '+' : '') + n.toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + sufixo;
+                return `<span class="${bom ? 'text-success' : 'text-danger'}"><i class="bi ${seta}"></i> ${texto}</span>
+                        <span class="text-muted">vs. período anterior</span>`;
+            }
+
+            // ---------- Estados de cada seção (RF07) ----------
+            function estado(secao, tipo, texto) {
+                const el = $(secao);
+                el.dataset.estado = tipo || '';
+                const caixa = el.querySelector('.secao-estado');
+                if (tipo === 'carregando') {
+                    caixa.innerHTML = '<div class="spinner-border spinner-border-sm text-primary me-2"></div><span class="small text-muted">Carregando...</span>';
+                } else if (tipo === 'vazio') {
+                    caixa.innerHTML = `<span class="small text-muted"><i class="bi bi-inbox me-1"></i>${escapeHtml(texto || 'Nenhum pedido no período selecionado.')}</span>`;
+                } else if (tipo === 'erro') {
+                    caixa.innerHTML = `<span class="small text-danger"><i class="bi bi-exclamation-triangle me-1"></i>${escapeHtml(texto)}</span>`;
+                } else {
+                    caixa.innerHTML = '';
+                }
+            }
+
+            // ---------- Filtros (RF05) ----------
+            function lerFiltros() {
+                return { inicio: $('fInicio').value, fim: $('fFim').value, status: $('fStatus').value, tipoAtendimento: $('fTipo').value };
+            }
+
+            function queryString(extra) {
+                const p = new URLSearchParams();
+                Object.entries(Object.assign(lerFiltros(), extra || {})).forEach(([k, v]) => { if (v) { p.set(k, v); } });
+                return p.toString();
+            }
+
+            function validarFiltros() {
+                const f = lerFiltros();
+                if (f.inicio && f.fim && f.inicio > f.fim) {
+                    mostrarMensagem($('mensagem'), 'A data inicial não pode ser posterior à data final.', 'erro');
+                    return false;
+                }
+                mostrarMensagem($('mensagem'), '');
+                return true;
+            }
+
+            function definirPeriodo(atalho) {
+                const hoje = new Date();
+                let inicio = new Date(hoje);
+                if (atalho === '7') { inicio.setDate(hoje.getDate() - 6); }
+                if (atalho === '30') { inicio.setDate(hoje.getDate() - 29); }
+                if (atalho === 'mes') { inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1); }
+                $('fInicio').value = isoLocal(inicio);
+                $('fFim').value = isoLocal(hoje);
+            }
+
+            // Mantém os filtros na URL: dá para recarregar a página ou mandar o link
+            function salvarNaUrl() {
+                const qs = queryString();
+                history.replaceState(null, '', location.pathname + (qs ? '?' + qs : ''));
+            }
+
+            async function carregarOpcoes() {
+                const o = await api('/api/dashboard/filtros');
+                const preencher = (select, opcoes) => opcoes.forEach(op =>
+                    select.insertAdjacentHTML('beforeend', `<option value="${escapeHtml(op.valor)}">${escapeHtml(op.descricao)}</option>`));
+                preencher($('fStatus'), o.status);
+                preencher($('fTipo'), o.tiposAtendimento);
+                preencher($('rkCriterio'), o.criteriosRanking);
+                o.categorias.forEach(c => $('rkCategoria').insertAdjacentHTML('beforeend',
+                    `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`));
+
+                const url = new URLSearchParams(location.search);
+                $('fInicio').value = url.get('inicio') || o.inicioPadrao;
+                $('fFim').value = url.get('fim') || o.fimPadrao;
+                $('fStatus').value = url.get('status') || '';
+                $('fTipo').value = url.get('tipoAtendimento') || '';
+            }
+
+            // ---------- Gráficos ----------
+            Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+            Chart.defaults.color = COR_TEXTO;
+
+            function desenhar(nome, canvas, config) {
+                if (graficos[nome]) {
+                    graficos[nome].data = config.data;
+                    graficos[nome].options = config.options;
+                    graficos[nome].update();
+                } else {
+                    graficos[nome] = new Chart($(canvas), config);
+                }
+            }
+
+            function opcoesEixo(formatoY, horizontal) {
+                const valor = { beginAtZero: true, grid: { color: COR_GRADE }, border: { display: false },
+                                ticks: { callback: v => formatoY(v), maxTicksLimit: 5 } };
+                const categoria = { grid: { display: false }, border: { color: COR_GRADE }, ticks: { autoSkip: true, maxRotation: 0 } };
+                return {
+                    responsive: true, maintainAspectRatio: false, animation: { duration: 250 },
+                    indexAxis: horizontal ? 'y' : 'x',
+                    interaction: { mode: 'index', intersect: false },
+                    plugins: { legend: { display: false },
+                               tooltip: { callbacks: { label: c => ' ' + formatoY(horizontal ? c.parsed.x : c.parsed.y) } } },
+                    scales: horizontal ? { x: valor, y: categoria } : { x: categoria, y: valor }
+                };
+            }
+
+            function barras(rotulos, valores) {
+                return { labels: rotulos, datasets: [{ data: valores, backgroundColor: COR_1, borderRadius: 4,
+                         borderSkipped: 'start', maxBarThickness: 28, hoverBackgroundColor: COR_1 }] };
+            }
+
+            // ---------- Renderização de cada seção ----------
+            function renderResumo(r) {
+                const c = r.comparativo;
+                $('kFaturamento').textContent = moeda(r.faturamento);
+                $('kPedidos').textContent = numero(r.pedidosValidos);
+                $('kTicket').textContent = moeda(r.ticketMedio);
+                $('kCancelamento').textContent = pct(r.taxaCancelamento);
+                $('cFaturamento').innerHTML = comparacao(c.variacaoFaturamento, '%');
+                $('cPedidos').innerHTML = comparacao(c.variacaoPedidos, '%');
+                $('cTicket').innerHTML = comparacao(c.variacaoTicketMedio, '%');
+                $('cCancelamento').innerHTML = comparacao(c.diferencaTaxaCancelamento, ' p.p.', true);
+                $('resumoRodape').innerHTML =
+                    `Período: <strong>${dataBR(r.inicio)} a ${dataBR(r.fim)}</strong>
+                     (comparado com ${dataBR(c.inicio)} a ${dataBR(c.fim)}) &middot;
+                     ${numero(r.totalPedidos)} pedido(s) no total, ${numero(r.pedidosCancelados)} cancelado(s) &middot;
+                     ${numero(r.itensVendidos)} item(ns) vendido(s) &middot; descontos concedidos: ${moeda(r.totalDescontos)}.
+                     Pedidos cancelados não entram no faturamento.`;
+                estado('secResumo', null); // zeros também são informação: os cards sempre aparecem
+                $('atualizadoEm').textContent = 'Atualizado às ' + dataHora(r.atualizadoEm, true).split(' ').pop();
+            }
+
+            function renderSerie(pontos) {
+                const metrica = $('serieMetrica').value;
+                const titulos = { faturamento: 'Faturamento', pedidos: 'Pedidos', ticketMedio: 'Ticket médio' };
+                $('tituloSerie').textContent = titulos[metrica] + ' no período';
+                const formato = metrica === 'pedidos' ? numero : moeda;
+                const temDados = pontos.some(p => p.pedidos > 0);
+                estado('secSerie', temDados ? null : 'vazio');
+                // Semana/mês cortados pelo filtro têm menos dias: avisa para não parecer queda de vendas
+                const agrup = $('serieAgrupamento').value;
+                const diasEsperados = agrup === 'SEMANA' ? 7 : 28;
+                const dias = p => (new Date(p.fim) - new Date(p.inicio)) / 86400000 + 1;
+                const incompletos = agrup === 'DIA' ? [] : pontos.filter(p => dias(p) < diasEsperados).map(p => p.rotulo);
+                $('avisoSerie').innerHTML = incompletos.length
+                    ? `<i class="bi bi-info-circle me-1"></i>Período parcial (o filtro corta ${incompletos.length > 1 ? 'os períodos' : 'o período'} ${escapeHtml(incompletos.join(' e '))}). Passe o mouse para ver as datas.`
+                    : '';
+                const config = {
+                    type: pontos.length > 1 ? 'line' : 'bar',
+                    data: { labels: pontos.map(p => p.rotulo), datasets: [{
+                        data: pontos.map(p => Number(p[metrica])),
+                        borderColor: COR_1, backgroundColor: COR_1, borderWidth: 2, borderRadius: 4,
+                        pointRadius: pontos.length > 40 ? 0 : 3, pointHoverRadius: 5, tension: 0.2, cubicInterpolationMode: 'monotone', maxBarThickness: 40 }] },
+                    options: opcoesEixo(formato)
+                };
+                // Tooltip com o intervalo exato de cada ponto (útil no agrupamento por semana/mês)
+                config.options.plugins.tooltip.callbacks.title = itens => {
+                    const p = pontos[itens[0].dataIndex];
+                    return p.inicio === p.fim ? dataBR(p.inicio) : `${dataBR(p.inicio)} a ${dataBR(p.fim)}`;
+                };
+                config.options.plugins.tooltip.callbacks.afterLabel = c => {
+                    const p = pontos[c.dataIndex];
+                    return ` ${numero(p.pedidos)} pedido(s), ${numero(p.cancelados)} cancelado(s)`;
+                };
+                if (graficos.serie && graficos.serie.config.type !== config.type) {
+                    graficos.serie.destroy();
+                    delete graficos.serie;
+                }
+                desenhar('serie', 'grSerie', config);
+            }
+
+            function renderTipo(fatias) {
+                const temDados = fatias.some(f => f.pedidos > 0);
+                estado('secTipo', temDados ? null : 'vazio');
+                const cores = [COR_1, COR_2];
+                desenhar('tipo', 'grTipo', {
+                    type: 'doughnut',
+                    data: { labels: fatias.map(f => f.rotulo), datasets: [{ data: fatias.map(f => Number(f.faturamento)),
+                            backgroundColor: cores, borderColor: '#fff', borderWidth: 2, hoverOffset: 4 }] },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '62%', animation: { duration: 250 },
+                               plugins: { legend: { display: false },
+                                          tooltip: { callbacks: { label: c => ` ${moeda(c.parsed)} (${pct(fatias[c.dataIndex].percentual)})` } } } }
+                });
+                $('legendaTipo').innerHTML = fatias.map((f, i) => `
+                    <li class="d-flex justify-content-between py-1 border-bottom">
+                        <span><span class="d-inline-block rounded-circle me-2" style="width:10px;height:10px;background:${cores[i]}"></span>${escapeHtml(f.rotulo)}</span>
+                        <span><strong>${moeda(f.faturamento)}</strong> <span class="text-muted">${pct(f.percentual)} &middot; ${numero(f.pedidos)} ped.</span></span>
+                    </li>`).join('');
+            }
+
+            function renderDistribuicao(secao, nome, canvas, pico, fatias, rotuloPico) {
+                const temDados = fatias.some(f => f.pedidos > 0);
+                estado(secao, temDados ? null : 'vazio');
+                desenhar(nome, canvas, { type: 'bar', data: barras(fatias.map(f => f.rotulo), fatias.map(f => f.pedidos)),
+                                         options: opcoesEixo(numero) });
+                const maior = fatias.reduce((a, b) => (b.pedidos > a.pedidos ? b : a), fatias[0]);
+                $(pico).textContent = temDados ? `${rotuloPico}: ${maior.rotulo} (${numero(maior.pedidos)} pedidos)` : '';
+            }
+
+            function renderSituacao(s) {
+                $('sAndamento').textContent = numero(s.emAndamento);
+                $('sAtrasados').innerHTML = s.atrasados > 0
+                    ? `<span class="text-danger"><i class="bi bi-alarm me-1"></i>${numero(s.atrasados)}</span>` : '0';
+                $('sAtrasadosRotulo').textContent = `há mais de ${s.minutosAtraso} min`;
+                $('sTempo').textContent = s.tempoMedioMinutos === null ? '-'
+                    : Number(s.tempoMedioMinutos).toLocaleString('pt-BR', { maximumFractionDigits: 0 }) + ' min';
+                estado('secSituacao', s.total > 0 ? null : 'vazio');
+                const config = { type: 'bar', data: barras(s.porStatus.map(x => x.descricao), s.porStatus.map(x => x.quantidade)),
+                                 options: opcoesEixo(numero, true) };
+                config.options.plugins.tooltip.callbacks.label = c => ` ${numero(c.parsed.x)} (${pct(s.porStatus[c.dataIndex].percentual)})`;
+                desenhar('status', 'grStatus', config);
+            }
+
+            function renderRanking(lista) {
+                estado('secRanking', lista.length ? null : 'vazio', 'Nenhum produto vendido no período.');
+                // A barra mostra a participação no faturamento, escalada pelo maior da lista
+                const maior = lista.length ? Math.max(...lista.map(p => Number(p.percentualFaturamento))) : 0;
+                $('tbRanking').innerHTML = lista.map(p => {
+                    const base = Number(p.percentualFaturamento);
+                    return `<tr>
+                        <td class="ps-3 text-muted">${p.posicao}</td>
+                        <td class="fw-medium">${escapeHtml(p.nome)}</td>
+                        <td><span class="badge bg-light text-dark border">${escapeHtml(p.categoria)}</span></td>
+                        <td class="text-end">${numero(p.quantidade)}</td>
+                        <td class="text-end">${moeda(p.faturamento)}</td>
+                        <td><div class="d-flex align-items-center gap-2">
+                            <div class="flex-grow-1 bg-light rounded"><div class="barra-ranking" style="width:${maior ? (base / maior * 100).toFixed(1) : 0}%"></div></div>
+                            <span class="small text-muted" style="width:3.2rem">${pct(p.percentualFaturamento)}</span>
+                        </div></td>
+                    </tr>`;
+                }).join('') || '<tr><td colspan="6" class="py-5"></td></tr>';
+            }
+
+            function renderRecentes(lista) {
+                estado('secRecentes', lista.length ? null : 'vazio');
+                $('tbRecentes').innerHTML = lista.map(p => `
+                    <tr>
+                        <td class="ps-3 text-muted font-monospace small">${escapeHtml(String(p.id).slice(-6))}</td>
+                        <td>${escapeHtml(p.clienteNome)}</td>
+                        <td>${escapeHtml(p.tipoAtendimentoDescricao || '-')}</td>
+                        <td>${badgeStatus(p.status, p.statusDescricao)}
+                            ${p.atrasado ? `<span class="badge bg-danger ms-1" title="Em andamento acima do limite de atraso"><i class="bi bi-alarm"></i> ${numero(p.minutosDesdeEntrada)} min</span>` : ''}</td>
+                        <td class="text-center">${p.quantidadeItens}</td>
+                        <td class="text-end fw-medium">${moeda(p.valorTotal)}</td>
+                        <td class="small">${dataHora(p.dataHoraEntrada)}</td>
+                        <td class="pe-3 text-end"><a class="btn btn-sm btn-outline-primary" href="/pedidos/${encodeURIComponent(p.id)}"><i class="bi bi-eye"></i></a></td>
+                    </tr>`).join('') || '<tr><td colspan="8" class="py-5"></td></tr>';
+            }
+
+            // ---------- Carregamento (RF06 e RF07) ----------
+            // Cada seção carrega de forma independente: se um endpoint falhar, só aquele card mostra o erro.
+            async function secao(id, url, render) {
+                estado(id, 'carregando');
+                try {
+                    render(await api(url));
+                } catch (e) {
+                    estado(id, 'erro', e.message);
+                    throw e;
+                }
+            }
+
+            const carregarSerie = () => secao('secSerie',
+                '/api/dashboard/vendas/serie?' + queryString({ agrupamento: $('serieAgrupamento').value }), renderSerie);
+            const carregarRanking = () => secao('secRanking', '/api/dashboard/produtos/ranking?' + queryString({
+                criterio: $('rkCriterio').value, limite: $('rkLimite').value, categoria: $('rkCategoria').value }), renderRanking);
+
+            async function atualizarTudo() {
+                if (carregando || !validarFiltros()) { return; }
+                carregando = true;
+                $('btnAtualizar').disabled = true;
+                const qs = queryString();
+                const resultados = await Promise.allSettled([
+                    secao('secResumo', '/api/dashboard/resumo?' + qs, renderResumo),
+                    carregarSerie(),
+                    secao('secTipo', '/api/dashboard/vendas/por-tipo-atendimento?' + qs, renderTipo),
+                    secao('secHora', '/api/dashboard/vendas/por-hora?' + qs,
+                        f => renderDistribuicao('secHora', 'hora', 'grHora', 'picoHora', f, 'Pico')),
+                    secao('secDia', '/api/dashboard/vendas/por-dia-semana?' + qs,
+                        f => renderDistribuicao('secDia', 'dia', 'grDia', 'picoDia', f, 'Mais movimentado')),
+                    secao('secSituacao', '/api/dashboard/pedidos/situacao?' + qs, renderSituacao),
+                    carregarRanking(),
+                    secao('secRecentes', '/api/dashboard/pedidos/recentes?' + queryString({ limite: 10 }), renderRecentes)
+                ]);
+                const falhas = resultados.filter(r => r.status === 'rejected');
+                if (falhas.length) {
+                    mostrarMensagem($('mensagem'), falhas[0].reason.message, 'erro');
+                    if (falhas.length === resultados.length) { $('atualizadoEm').textContent = 'Falha ao atualizar'; }
+                }
+                carregando = false;
+                $('btnAtualizar').disabled = false;
+            }
+
+            function agendar() {
+                clearInterval(timer);
+                if ($('autoAtualizar').checked) {
+                    // Não atualiza com a aba escondida (economiza requisições)
+                    timer = setInterval(() => { if (document.visibilityState === 'visible') { atualizarTudo(); } }, INTERVALO_MS);
+                }
+            }
+
+            // ---------- Eventos ----------
+            $('formFiltros').addEventListener('submit', e => { e.preventDefault(); salvarNaUrl(); atualizarTudo(); });
+            $('btnLimpar').addEventListener('click', () => {
+                definirPeriodo('30'); $('fStatus').value = ''; $('fTipo').value = '';
+                salvarNaUrl(); atualizarTudo();
+            });
+            document.querySelectorAll('[data-atalho]').forEach(b => b.addEventListener('click', () => {
+                definirPeriodo(b.dataset.atalho); salvarNaUrl(); atualizarTudo();
+            }));
+            $('btnAtualizar').addEventListener('click', atualizarTudo);
+            $('autoAtualizar').addEventListener('change', agendar);
+            $('serieAgrupamento').addEventListener('change', () => carregarSerie().catch(() => {}));
+            $('serieMetrica').addEventListener('change', () => carregarSerie().catch(() => {}));
+            ['rkCriterio', 'rkLimite', 'rkCategoria'].forEach(id => $(id).addEventListener('change', () => carregarRanking().catch(() => {})));
+
+            // ---------- Início ----------
+            (async function iniciar() {
+                try {
+                    await carregarOpcoes();
+                } catch (e) {
+                    mostrarMensagem($('mensagem'), e.message, 'erro');
+                    return;
+                }
+                await atualizarTudo();
+                agendar();
+            })();
+        })();
+    </script>
+</div>
+
+</body>
+</html>

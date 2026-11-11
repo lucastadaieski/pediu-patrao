@@ -1,0 +1,83 @@
+### =====================================================================
+### API do Dashboard - requisições prontas para o HTTP Client do IntelliJ
+### Clique no ▶ ao lado de cada requisição. Troque as senhas abaixo.
+### =====================================================================
+
+@base = http://localhost:8080/api/dashboard
+@gerente = gerente01 SENHA
+@atendente = atendente01 SENHA
+
+### RF01 - Resumo (período padrão: últimos 30 dias)
+GET {{base}}/resumo
+Authorization: Basic {{gerente}}
+
+### RF01 - Resumo com período e filtros
+GET {{base}}/resumo?inicio=2026-11-01&fim=2026-11-30&tipoAtendimento=ENTREGA
+Authorization: Basic {{gerente}}
+
+### RF02 - Série por dia
+GET {{base}}/vendas/serie?agrupamento=DIA
+Authorization: Basic {{gerente}}
+
+### RF02 - Série por semana
+GET {{base}}/vendas/serie?agrupamento=SEMANA
+Authorization: Basic {{gerente}}
+
+### RF02 - Série por mês
+GET {{base}}/vendas/serie?agrupamento=MES&inicio=2026-08-01
+Authorization: Basic {{gerente}}
+
+### RF02 - Vendas por hora do dia
+GET {{base}}/vendas/por-hora
+Authorization: Basic {{gerente}}
+
+### RF02 - Vendas por dia da semana
+GET {{base}}/vendas/por-dia-semana
+Authorization: Basic {{gerente}}
+
+### RF02 - Entrega x retirada
+GET {{base}}/vendas/por-tipo-atendimento
+Authorization: Basic {{gerente}}
+
+### RF03 - Situação dos pedidos
+GET {{base}}/pedidos/situacao
+Authorization: Basic {{gerente}}
+
+### RF03 - Últimos pedidos
+GET {{base}}/pedidos/recentes?limite=5
+Authorization: Basic {{gerente}}
+
+### RF04 - Ranking por quantidade
+GET {{base}}/produtos/ranking?criterio=QUANTIDADE&limite=10
+Authorization: Basic {{gerente}}
+
+### RF04 - Ranking por faturamento, só pizzas
+GET {{base}}/produtos/ranking?criterio=FATURAMENTO&categoria=Pizza
+Authorization: Basic {{gerente}}
+
+### RF05 - Opções de filtro
+GET {{base}}/filtros
+Authorization: Basic {{gerente}}
+
+### ERRO 401 - sem autenticação
+GET {{base}}/resumo
+
+### ERRO 403 - ATENDENTE
+GET {{base}}/resumo
+Authorization: Basic {{atendente}}
+
+### ERRO 400 - início depois do fim
+GET {{base}}/resumo?inicio=2026-11-10&fim=2026-11-01
+Authorization: Basic {{gerente}}
+
+### ERRO 400 - status inválido
+GET {{base}}/resumo?status=ENTREGUE
+Authorization: Basic {{gerente}}
+
+### ERRO 400 - data em formato errado
+GET {{base}}/resumo?inicio=10/11/2026
+Authorization: Basic {{gerente}}
+
+### ERRO 400 - limite fora da faixa
+GET {{base}}/pedidos/recentes?limite=100
+Authorization: Basic {{gerente}}
