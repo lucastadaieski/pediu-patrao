@@ -427,7 +427,7 @@ curl -u gerente01:SENHA "http://localhost:8080/api/dashboard/filtros"
 | `GET /produtos/ranking` | RF04 | `criterio`, `limite`, `categoria` | `ProdutoRanking[]` |
 | `GET /filtros` | RF05 | | `OpcoesFiltro` |
 
-Os arquivos [`api-dashboard.http`](api-dashboard.http) (IntelliJ) e [`evidencias/testar-api.sh`](evidencias/testar-api.sh) têm todas essas requisições prontas para executar.
+O script [`evidencias/testar-api.sh`](evidencias/testar-api.sh) executa todas essas requisições e confere os códigos de resposta (seção 7.3).
 
 > Os valores dos exemplos foram gerados pela própria `DashboardCalculadora` com os dados de demonstração. Ids e alguns números foram encurtados para caber no documento.
 
@@ -441,7 +441,7 @@ Os arquivos [`api-dashboard.http`](api-dashboard.http) (IntelliJ) e [`evidencias
 |---|---|---|---|
 | Unitário: regras | Todos os cálculos dos RF01 a RF04 e as regras do filtro (RF05/RF07) | JUnit 5 | Não |
 | Unitário: dados demo | Pedidos de demonstração coerentes com as regras do sistema | JUnit 5 | Não |
-| Integração da API | Endpoints respondendo com o banco real, segurança (401/403) e erros (400) | `curl` / HTTP Client | Sim (MongoDB Atlas) |
+| Integração da API | Endpoints respondendo com o banco real, segurança (401/403) e erros (400) | curl (script testar-api.sh)| Sim (MongoDB Atlas) |
 | Funcional da tela | Dashboard carregando, filtros, gráficos, atualização e estados de erro | Navegador | Sim |
 
 ### 7.2 Testes unitários
@@ -520,9 +520,7 @@ _Substitua pelo print do sistema rodando com o seu banco._
 
 ![Dashboard administrativo](img/dashboard.png)
 
-Protótipo validado durante o desenvolvimento, com a tela real alimentada pelas respostas da `DashboardCalculadora` sobre os dados de demonstração:
 
-![Protótipo do dashboard](img/dashboard-prototipo.png)
 
 **Como executar e carregar dados de demonstração:** ver a seção "Como executar o projeto" do [README](../readme.md). Com `APP_DEMO_CARREGAR=true` no `.env`, a primeira execução cria cerca de 500 pedidos nos últimos 60 dias.
 

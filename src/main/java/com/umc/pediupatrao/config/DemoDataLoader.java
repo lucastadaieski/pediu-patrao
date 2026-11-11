@@ -25,16 +25,6 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-/**
- * Carga OPCIONAL de pedidos de demonstração para o dashboard não aparecer vazio.
- *
- * Só roda com app.demo.carregar=true (no .env: APP_DEMO_CARREGAR=true) e só uma vez:
- * se já existir algum pedido com responsável "demo", não faz nada.
- *
- * Os pedidos são gravados direto no repositório (sem passar pelo PedidoService), por isso
- * NÃO geram auditoria. Para apagar depois, no MongoDB:
- *     db.pedidos.deleteMany({ responsavelEntrada: "demo" })
- */
 @Component
 @Order(100) // depois do DataInitializer e do MongoInitConfig
 @ConditionalOnProperty(name = "app.demo.carregar", havingValue = "true")

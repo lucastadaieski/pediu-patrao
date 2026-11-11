@@ -21,10 +21,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/**
- * API de pedidos. O controller só recebe, valida o formato (@Valid) e repassa;
- * as regras ficam no PedidoService.
- */
 @RestController
 @RequestMapping("/api/pedidos")
 public class PedidoController {

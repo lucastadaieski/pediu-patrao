@@ -29,13 +29,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-/**
- * Cálculos do dashboard. Recebe a lista de pedidos já filtrada pelo DashboardService
- * e devolve os DTOs prontos para a API.
- *
- * Esta classe NÃO acessa banco nem Spring de propósito: é só regra de negócio, por isso
- * pode ser testada com listas montadas na mão (ver DashboardCalculadoraTest).
- */
 public class DashboardCalculadora {
 
     private static final BigDecimal CEM = new BigDecimal("100");

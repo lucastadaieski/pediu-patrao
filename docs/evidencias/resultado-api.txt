@@ -1,0 +1,143 @@
+Testes de integração da API do Dashboard
+Data/hora: 10/11/2026 23:54:44   Base: http://localhost:8080
+============================================================
+
+[T01] Resumo com período padrão (últimos 30 dias)
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/resumo
+HTTP 200 (esperado 200): OK
+Resposta:
+{"inicio":"2026-10-12","fim":"2026-11-10","faturamento":715.80,"totalPedidos":11,"pedidosValidos":9,"pedidosCancelados":2,"taxaCancelamento":18.2,"ticketMedio":79.53,"itensVendidos":24,"totalDescontos":45.20,"comparativo":{"inicio":"2026-09-12","fim":"2026-10-11","faturamento":0.00,"pedidosValidos":0,"ticketMedio":0.00,"taxaCancelamento":0.0,"variacaoFaturamento":null,"variacaoPedidos":null,"variacaoTicketMedio":null,"diferencaTaxaCancelamento":null},"atualizadoEm":"2026-11-10T23:54:45.396665"}
+
+
+[T02] Resumo do mês atual, só entregas
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/resumo?inicio=2026-11-01&fim=2026-11-10&tipoAtendimento=ENTREGA
+HTTP 200 (esperado 200): OK
+Resposta:
+{"inicio":"2026-11-01","fim":"2026-11-10","faturamento":0.00,"totalPedidos":0,"pedidosValidos":0,"pedidosCancelados":0,"taxaCancelamento":0.0,"ticketMedio":0.00,"itensVendidos":0,"totalDescontos":0.00,"comparativo":{"inicio":"2026-10-22","fim":"2026-10-31","faturamento":0.00,"pedidosValidos":0,"ticketMedio":0.00,"taxaCancelamento":0.0,"variacaoFaturamento":null,"variacaoPedidos":null,"variacaoTicketMedio":null,"diferencaTaxaCancelamento":null},"atualizadoEm":"2026-11-10T23:54:46.0803628"}
+
+
+[T03a] Série por dia
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/vendas/serie?agrupamento=DIA
+HTTP 200 (esperado 200): OK
+Resposta:
+[{"rotulo":"12/10","inicio":"2026-10-12","fim":"2026-10-12","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"13/10","inicio":"2026-10-13","fim":"2026-10-13","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"14/10","inicio":"2026-10-14","fim":"2026-10-14","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"15/10","inicio":"2026-10-15","fim":"2026-10-15","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"16/10","inicio":"2026-10-16","fim":"2026-10-16","pedidos":9,"cancelados":2,"faturamento":715.80,"ticketMedio":79.53},{"rotulo":"17/10","inicio":"2026-10-17","fim":"2026-10-17","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"18/10","inicio":"2026-10-18","fim":"2026-10-18","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"19/10","inicio":"2026-10-19","fim":"2026-10-19","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"20/10","inicio":"2026-10-20","fim":"2026-10-20","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"21/10","inicio":"2026-10-21","fim":"2026-10-21","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"22/10","inicio":"2026-10-22","fim":"2026-10-22","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"23/10","inicio":"2026-10-23","fim":"2026-10-23","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.
+
+[T03b] Série por semana
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/vendas/serie?agrupamento=SEMANA
+HTTP 200 (esperado 200): OK
+Resposta:
+[{"rotulo":"Sem. 12/10","inicio":"2026-10-12","fim":"2026-10-18","pedidos":9,"cancelados":2,"faturamento":715.80,"ticketMedio":79.53},{"rotulo":"Sem. 19/10","inicio":"2026-10-19","fim":"2026-10-25","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"Sem. 26/10","inicio":"2026-10-26","fim":"2026-11-01","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"Sem. 02/11","inicio":"2026-11-02","fim":"2026-11-08","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00},{"rotulo":"Sem. 09/11","inicio":"2026-11-09","fim":"2026-11-10","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00}]
+
+
+[T03c] Série por mês
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/vendas/serie?agrupamento=MES
+HTTP 200 (esperado 200): OK
+Resposta:
+[{"rotulo":"10/2026","inicio":"2026-10-12","fim":"2026-10-31","pedidos":9,"cancelados":2,"faturamento":715.80,"ticketMedio":79.53},{"rotulo":"11/2026","inicio":"2026-11-01","fim":"2026-11-10","pedidos":0,"cancelados":0,"faturamento":0.00,"ticketMedio":0.00}]
+
+
+[T04a] Vendas por hora
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/vendas/por-hora
+HTTP 200 (esperado 200): OK
+Resposta:
+[{"chave":"0","rotulo":"00h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"1","rotulo":"01h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"2","rotulo":"02h","pedidos":1,"faturamento":96.80,"percentual":13.5},{"chave":"3","rotulo":"03h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"4","rotulo":"04h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"5","rotulo":"05h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"6","rotulo":"06h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"7","rotulo":"07h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"8","rotulo":"08h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"9","rotulo":"09h","pedidos":6,"faturamento":463.00,"percentual":64.7},{"chave":"10","rotulo":"10h","pedidos":2,"faturamento":156.00,"percentual":21.8},{"chave":"11","rotulo":"11h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"12","rotulo":"12h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"13","rotulo":"13h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"14","rotulo":"14h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"15","rotulo":"15h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"16","rotulo":"16h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"17","rotulo":"17h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"18","rotulo":"18h","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"19","rotu
+
+[T04b] Vendas por dia da semana
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/vendas/por-dia-semana
+HTTP 200 (esperado 200): OK
+Resposta:
+[{"chave":"MONDAY","rotulo":"Seg","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"TUESDAY","rotulo":"Ter","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"WEDNESDAY","rotulo":"Qua","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"THURSDAY","rotulo":"Qui","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"FRIDAY","rotulo":"Sex","pedidos":9,"faturamento":715.80,"percentual":100.0},{"chave":"SATURDAY","rotulo":"Sáb","pedidos":0,"faturamento":0.00,"percentual":0.0},{"chave":"SUNDAY","rotulo":"Dom","pedidos":0,"faturamento":0.00,"percentual":0.0}]
+
+
+[T04c] Vendas por tipo de atendimento
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/vendas/por-tipo-atendimento
+HTTP 200 (esperado 200): OK
+Resposta:
+[{"chave":"ENTREGA","rotulo":"Entrega","pedidos":5,"faturamento":315.80,"percentual":44.1},{"chave":"RETIRADA","rotulo":"Retirada no balcão","pedidos":4,"faturamento":400.00,"percentual":55.9}]
+
+
+[T05] Situação dos pedidos
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/pedidos/situacao
+HTTP 200 (esperado 200): OK
+Resposta:
+{"total":11,"emAndamento":5,"finalizados":4,"cancelados":2,"atrasados":5,"minutosAtraso":40,"tempoMedioMinutos":9.5,"porStatus":[{"status":"RECEBIDO","descricao":"Recebido","quantidade":4,"percentual":36.4},{"status":"EM_PREPARACAO","descricao":"Em preparação","quantidade":0,"percentual":0.0},{"status":"PRONTO","descricao":"Pronto","quantidade":0,"percentual":0.0},{"status":"SAIU_PARA_ENTREGA","descricao":"Saiu para entrega","quantidade":1,"percentual":9.1},{"status":"RETIRADO","descricao":"Retirado","quantidade":0,"percentual":0.0},{"status":"FINALIZADO","descricao":"Finalizado","quantidade":4,"percentual":36.4},{"status":"CANCELADO","descricao":"Cancelado","quantidade":2,"percentual":18.2}]}
+
+
+[T06] Últimos 5 pedidos
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/pedidos/recentes?limite=5
+HTTP 200 (esperado 200): OK
+Resposta:
+[{"id":"6ad22139f3a12d0a6b10793e","clienteNome":"Murilo ","tipoAtendimento":"RETIRADA","tipoAtendimentoDescricao":"Retirada no balcão","status":"RECEBIDO","statusDescricao":"Recebido","quantidadeItens":2,"valorTotal":100.00,"dataHoraEntrada":"2026-10-16T10:06:01.188","minutosDesdeEntrada":36828,"atrasado":true},{"id":"6ad22062f3a12d0a6b107937","clienteNome":"Rafinha","tipoAtendimento":"ENTREGA","tipoAtendimentoDescricao":"Entrega","status":"SAIU_PARA_ENTREGA","statusDescricao":"Saiu para entrega","quantidadeItens":3,"valorTotal":56.00,"dataHoraEntrada":"2026-10-16T10:02:26.884","minutosDesdeEntrada":36832,"atrasado":true},{"id":"6ad21f53f3a12d0a6b107934","clienteNome":"Murilo ","tipoAtendimento":"RETIRADA","tipoAtendimentoDescricao":"Retirada no balcão","status":"RECEBIDO","statusDescricao":"Recebido","quantidadeItens":2,"valorTotal":100.00,"dataHoraEntrada":"2026-10-16T09:57:55.667","minutosDesdeEntrada":36836,"atrasado":true},{"id":"6ad21f2ef3a12d0a6b107932","clienteNome":"Murilo ","tipoAtendimento":"RETIRADA","tipoAtendimentoDescricao":"Retirada no balcão","status":"RECEBIDO","statusDescricao":"Recebido","quantidadeItens":2,"valorTotal":100.00,"dataHoraEntrada":"2026-10-16T09:57:18.487","minutosDesdeEntrada":36837,"atrasado":true},{"id":"6ad21c94a9dac04dbbe9cb8b","clienteNome":"Rafinha","tipoAtendimento":"ENTREGA","tipoAtendimentoDescricao":"Entrega","status":"FINALIZADO","statusDescricao":"Finalizado","quantidadeItens":3,"valorTotal":63.00,"dataHoraEntrada":"2026-10-16
+
+[T07] Ranking por faturamento, categoria Pizza
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/produtos/ranking?criterio=FATURAMENTO&categoria=Pizza&limite=5
+HTTP 200 (esperado 200): OK
+Resposta:
+[{"posicao":1,"produtoId":"6ad1b7fba63fa14e6f1a890a","nome":"Marguerita","categoria":"Pizza","quantidade":13,"faturamento":650.00,"percentualFaturamento":100.0}]
+
+
+[T08] Opções de filtro
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/filtros
+HTTP 200 (esperado 200): OK
+Resposta:
+{"inicioPadrao":"2026-10-12","fimPadrao":"2026-11-10","diasMaximo":366,"status":[{"valor":"RECEBIDO","descricao":"Recebido"},{"valor":"EM_PREPARACAO","descricao":"Em preparação"},{"valor":"PRONTO","descricao":"Pronto"},{"valor":"SAIU_PARA_ENTREGA","descricao":"Saiu para entrega"},{"valor":"RETIRADO","descricao":"Retirado"},{"valor":"FINALIZADO","descricao":"Finalizado"},{"valor":"CANCELADO","descricao":"Cancelado"}],"tiposAtendimento":[{"valor":"ENTREGA","descricao":"Entrega"},{"valor":"RETIRADA","descricao":"Retirada no balcão"}],"agrupamentos":[{"valor":"DIA","descricao":"Por dia"},{"valor":"SEMANA","descricao":"Por semana"},{"valor":"MES","descricao":"Por mês"}],"criteriosRanking":[{"valor":"QUANTIDADE","descricao":"Quantidade vendida"},{"valor":"FATURAMENTO","descricao":"Faturamento"}],"categorias":["Adicional","Bebida","Esfiha","Pizza"]}
+
+
+[T09] Sem autenticação
+Requisição: curl http://localhost:8080/api/dashboard/resumo
+HTTP 401 (esperado 401): OK
+Resposta:
+{"timestamp":"2026-11-10T23:54:49.2573538","status":401,"erro":"Não autenticado","mensagem":"Autenticação necessária. Envie usuário e senha (HTTP Basic).","caminho":"/api/dashboard/resumo","detalhes":[]}
+
+
+[T10] ATENDENTE sem permissão
+Requisição: curl -u Felipe Seiji:***** http://localhost:8080/api/dashboard/resumo
+HTTP 403 (esperado 403): OK
+Resposta:
+{"timestamp":"2026-11-10T23:54:49.5853565","status":403,"erro":"Acesso negado","mensagem":"Perfil sem permissão para a operação.","caminho":"/api/dashboard/resumo","detalhes":[]}
+
+
+[T11] POST não permitido (API somente leitura)
+Requisição: curl -u Gabriel BK:***** -X POST http://localhost:8080/api/dashboard/resumo
+HTTP 403 (esperado 403): OK
+Resposta:
+{"timestamp":"2026-11-10T23:54:49.8963579","status":403,"erro":"Acesso negado","mensagem":"Perfil sem permissão para a operação.","caminho":"/api/dashboard/resumo","detalhes":[]}
+
+
+[T12] Início depois do fim
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/resumo?inicio=2026-11-10&fim=2026-11-01
+HTTP 400 (esperado 400): OK
+Resposta:
+{"timestamp":"2026-11-10T23:54:50.1743587","status":400,"erro":"Requisição inválida","mensagem":"A data inicial não pode ser posterior à data final.","caminho":"/api/dashboard/resumo","detalhes":[]}
+
+
+[T13] Período maior que 366 dias
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/resumo?inicio=2025-01-01&fim=2026-11-10
+HTTP 400 (esperado 400): OK
+Resposta:
+{"timestamp":"2026-11-10T23:54:50.4643604","status":400,"erro":"Requisição inválida","mensagem":"O período máximo de consulta é de 366 dias.","caminho":"/api/dashboard/resumo","detalhes":[]}
+
+
+[T14] Status inválido
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/resumo?status=ENTREGUE
+HTTP 400 (esperado 400): OK
+Resposta:
+{"timestamp":"2026-11-10T23:54:50.7633545","status":400,"erro":"Parâmetro inválido","mensagem":"Valor inválido para o parâmetro 'status': ENTREGUE.","caminho":"/api/dashboard/resumo","detalhes":["Valores aceitos: [RECEBIDO, EM_PREPARACAO, PRONTO, SAIU_PARA_ENTREGA, RETIRADO, FINALIZADO, CANCELADO]"]}
+
+
+[T15] Data em formato errado
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/resumo?inicio=10/11/2026
+HTTP 400 (esperado 400): OK
+Resposta:
+{"timestamp":"2026-11-10T23:54:51.0533581","status":400,"erro":"Parâmetro inválido","mensagem":"Valor inválido para o parâmetro 'inicio': 10/11/2026.","caminho":"/api/dashboard/resumo","detalhes":["Use o formato AAAA-MM-DD, por exemplo 2026-11-10."]}
+
+
+[T16] Limite fora da faixa
+Requisição: curl -u Gabriel BK:***** http://localhost:8080/api/dashboard/pedidos/recentes?limite=100
+HTTP 400 (esperado 400): OK
+Resposta:
+{"timestamp":"2026-11-10T23:54:51.3533614","status":400,"erro":"Requisição inválida","mensagem":"O limite deve estar entre 1 e 50.","caminho":"/api/dashboard/pedidos/recentes","detalhes":[]}
+
+
+============================================================
+RESULTADO: 20 de 20 cenários OK
