@@ -51,6 +51,10 @@ public class SecurityConfig {
                         // Usuários e perfis: somente ADMIN (impede atribuição indevida de privilégios)
                         .requestMatchers("/usuarios/**", "/api/usuarios/**").hasRole(ADMIN)
 
+                        // Dashboard: somente consulta, ADMIN e GERENTE
+                        .requestMatchers(HttpMethod.GET, "/dashboard", "/api/dashboard/**").hasAnyRole(ADMIN, GERENTE)
+                        .requestMatchers("/dashboard/**", "/api/dashboard/**").denyAll()
+
                         // Auditoria: somente consulta, ADMIN e GERENTE
                         .requestMatchers(HttpMethod.GET, "/auditoria/**", "/api/auditoria/**").hasAnyRole(ADMIN, GERENTE)
                         .requestMatchers("/auditoria/**", "/api/auditoria/**").denyAll()

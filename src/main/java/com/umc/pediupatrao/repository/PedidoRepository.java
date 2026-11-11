@@ -14,4 +14,7 @@ public interface PedidoRepository extends MongoRepository<Pedido, String> {
     List<Pedido> findAllByOrderByDataHoraEntradaDesc();
 
     List<Pedido> findByStatusOrderByDataHoraEntradaDesc(StatusPedido status);
+
+    /** Usado pelo DemoDataLoader para não carregar os dados de demonstração duas vezes. */
+    boolean existsByResponsavelEntrada(String responsavelEntrada);
 }

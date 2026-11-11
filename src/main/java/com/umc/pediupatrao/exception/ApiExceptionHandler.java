@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice(annotations = RestController.class)
 public class ApiExceptionHandler {
@@ -48,6 +49,21 @@ public class ApiExceptionHandler {
         return resposta(HttpStatus.BAD_REQUEST, "Requisição inválida",
                 "Corpo da requisição ausente ou em formato inválido (verifique o JSON e os valores dos enums).",
                 request, List.of());
+    }
+
+    /** Parâmetro de URL com valor inválido (ex.: ?status=XYZ, ?inicio=10/11/2026, ?limite=abc). */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErroResponse> parametroInvalido(MethodArgumentTypeMismatchException e,
+                                                          HttpServletRequest request) {
+        String mensagem = "Valor inválido para o parâmetro '" + e.getName() + "': " + e.getValue() + ".";
+        Class<?> tipo = e.getRequiredType();
+        List<String> detalhes = List.of();
+        if (tipo != null && tipo.isEnum()) {
+            detalhes = List.of("Valores aceitos: " + java.util.Arrays.toString(tipo.getEnumConstants()));
+        } else if (tipo == java.time.LocalDate.class) {
+            detalhes = List.of("Use o formato AAAA-MM-DD, por exemplo 2026-11-10.");
+        }
+        return resposta(HttpStatus.BAD_REQUEST, "Parâmetro inválido", mensagem, request, detalhes);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

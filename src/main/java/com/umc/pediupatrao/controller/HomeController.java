@@ -47,6 +47,14 @@ public class HomeController {
     }
 
     // ========================
+    // DASHBOARD (ADMIN e GERENTE; a tela consome /api/dashboard)
+    // ========================
+    @GetMapping("/dashboard")
+    public String dashboard(Model model) {
+        return tela(model, "dashboard :: content");
+    }
+
+    // ========================
     // USUÁRIOS (somente ADMIN)
     // ========================
     @GetMapping("/usuarios")
